@@ -22,6 +22,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_order'])) {
     $conn->query("INSERT INTO Order_Item (order_id, item_id, quantity) VALUES ($order_id, $item_id, $quantity)");
 }
 
+// Handle deleting an order
+if (isset($_GET['delete_id'])) {
+    $delete_id = $_GET['delete_id'];
+
+    // First, delete the associated order items from the Order_Item table
+    $conn->query("DELETE FROM Order_Item WHERE order_id = $delete_id");
+
+    // Then, delete the order from the Orders table
+    $conn->query("DELETE FROM Orders WHERE order_id = $delete_id");
+
+    header("Location: orders.php");
+    exit();
+}
+
+// Handle order status update (on form submission)
+if (isset($_POST['update_order_status'])) {
+    $order_id = $_POST['order_id'];
+    $new_status = $_POST['status'];
+
+    // Update the status of the order in the Orders table
+    $conn->query("UPDATE Orders SET status = '$new_status' WHERE order_id = $order_id");
+
+    // Redirect after update to avoid form resubmission on refresh
+    header("Location: orders.php");
+    exit();
+}
+
 // Fetch all orders with user and item details
 $sql = "SELECT o.order_id, o.order_date, u.username, i.name AS item_name, oi.quantity, o.status 
         FROM Orders o
@@ -30,13 +57,6 @@ $sql = "SELECT o.order_id, o.order_date, u.username, i.name AS item_name, oi.qua
         JOIN Item i ON oi.item_id = i.item_id
         ORDER BY o.order_date DESC";
 $result = $conn->query($sql);
-
-// Handle order status update
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_order_status'])) {
-    $order_id = $_POST['order_id'];
-    $new_status = $_POST['status'];
-    $conn->query("UPDATE Orders SET status = '$new_status' WHERE order_id = $order_id");
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -45,6 +65,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_order_status']
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Orders</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            background: linear-gradient(to right, #ff7e5f, #feb47b); /* Gradient background */
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.9); /* White background with slight transparency */
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        h2, h3 {
+            color: #333;
+        }
+        .btn-primary {
+            background: #ff7e5f;
+            border: none;
+        }
+        .btn-primary:hover {
+            background: #feb47b;
+        }
+        table {
+            background-color: #fff;
+        }
+    </style>
 </head>
 <body>
 <?php include 'admin_layout.php'; ?>
@@ -57,16 +106,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_order_status']
     <form method="POST" class="mb-5">
         <div class="row">
             <div class="col-md-3">
-                <label for="orders_id" class="form-label">orders ID</label>
-                <input type="number" class="form-control" name="user_id" required>
+                <label for="user_id" class="form-label">Username</label>
+                <select class="form-control" name="user_id" required>
+                    <option value="">Select Username</option>
+                    <?php
+                    $users = $conn->query("SELECT user_id, username FROM User");
+                    while ($user = $users->fetch_assoc()) {
+                        echo "<option value='{$user['user_id']}'>{$user['username']}</option>";
+                    }
+                    ?>
+                </select>
             </div>
             <div class="col-md-3">
-                <label for="item_id" class="form-label">Item ID</label>
-                <input type="number" class="form-control" name="item_id" required>
+                <label for="item_id" class="form-label">Item</label>
+                <select class="form-control" name="item_id" required>
+                    <option value="">Select Item</option>
+                    <?php
+                    $items = $conn->query("SELECT item_id, name, price FROM Item");
+                    while ($item = $items->fetch_assoc()) {
+                        echo "<option value='{$item['item_id']}'>{$item['name']} - ৳{$item['price']}</option>";
+                    }
+                    ?>
+                </select>
             </div>
             <div class="col-md-3">
                 <label for="quantity" class="form-label">Quantity</label>
-                <input type="number" class="form-control" name="quantity" required>
+                <input type="number" class="form-control" name="quantity" min="1" required>
             </div>
             <div class="col-md-3">
                 <label for="status" class="form-label">Order Status</label>
@@ -113,7 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_order_status']
         </tbody>
     </table>
 
-    <!-- Manage Orders Section -->
+    <!-- Update Order Status Section -->
     <h3 class="mt-5">Update Order Status</h3>
     <form method="POST" class="mb-3">
         <div class="mb-3">

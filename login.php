@@ -5,11 +5,12 @@ include 'includes/db.php';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username_or_email = $_POST['username_or_email'];
     $password = $_POST['password'];
+    $role = $_POST['role'];
 
-    // Fetch user based on username or email
-    $sql = "SELECT * FROM User WHERE (username = ? OR email = ?)";
+    // Fetch user based on username, email, and role
+    $sql = "SELECT * FROM User WHERE (username = ? OR email = ?) AND role = ?";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param('ss', $username_or_email, $username_or_email);
+    $stmt->bind_param('sss', $username_or_email, $username_or_email, $role);
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -21,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['role'] = $user['role'];
 
             // Redirect based on role
-            if ($user['role'] === 'admin') {
+            if ($role === 'admin') {
                 header('Location: admin/dashboard.php');
             } else {
                 header('Location: user/user_dashboard.php');
@@ -31,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = "Invalid username or password!";
         }
     } else {
-        $error = "Invalid username or password!";
+        $error = "Invalid username, password, or role!";
     }
 }
 ?>
@@ -58,17 +59,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .nav-link:hover {
             color: #ffc107 !important; /* Gold on hover */
         }
-        .container {
-            background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent background for the form */
-            border-radius: 10px;
-            padding: 20px;
-        }
-        .main{
+        .main {
             width: 40%;
             border-radius: 10px;
             padding: 20px;
-            background-color: rgba(255, 255, 255, 0.8); 
-            margin:auto;
+            background-color: rgba(255, 255, 255, 0.8);
+            margin: auto;
         }
     </style>
 </head>
@@ -97,9 +93,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </nav>
 
     <div class="main mt-5">
-        <div class=" justify-content-center">
+        <div class="justify-content-center">
             <div class="">
-                <h2 class="text-center ">Login</h2>
+                <h2 class="text-center">Login</h2>
                 <?php if (isset($error)): ?>
                     <div class="alert alert-danger"><?php echo $error; ?></div>
                 <?php endif; ?>
@@ -111,6 +107,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="mb-3">
                         <label for="password" class="form-label">Password</label>
                         <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="role" class="form-label">Role</label>
+                        <select class="form-select" id="role" name="role" required>
+                            <option value="user">User</option>
+                            <option value="admin">Admin</option>
+                        </select>
                     </div>
                     <button type="submit" class="btn btn-primary w-100">Login</button>
                 </form>
